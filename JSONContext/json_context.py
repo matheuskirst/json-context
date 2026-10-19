@@ -48,6 +48,10 @@ class JsonContext:
             except:
                 return []
 
+        def reset_tracking(self):
+            self._is_querying = False
+            self._found_items.clear()
+
         def add(self, item: T):
             self._tracked_items.append(item)
 
@@ -80,7 +84,7 @@ class JsonContext:
             self._is_querying = True
             self._found_items = sorted(self._found_items, key=lambda v: getattr(v, field), reverse=True)
             return self
-    
+
         def select(self, *fields) -> Any | list[Any]:
             values_list: list[Any] = []
 
@@ -93,41 +97,36 @@ class JsonContext:
                     value = getattr(item, field)
                     values_list.append(value)
 
-            try:
-                return values_list
-            finally:
-                self._is_querying = False
-                self._found_items.clear()
+            self.reset_tracking()
+            return values_list
 
         def first(self) -> T | None:
-            try:
-                if not self._is_querying and len(self._found_items) == 0:
-                    return self._tracked_items[0] if self._tracked_items else None
+            if not self._is_querying and len(self._found_items) == 0:
+                result = self._tracked_items[0] if self._tracked_items else None
+                return result
 
-                return self._found_items[0] if self._found_items else None
-            finally:
-                self._is_querying = False
-                self._found_items.clear()
+            result = self._found_items[0] if self._found_items else None
+            self.reset_tracking()
+            return result
 
         def to_list(self) -> list[T] | None:
-            try:
-                if not self._is_querying and len(self._found_items) == 0:
-                    return self._tracked_items
-        
-                return self._found_items.copy()
-            finally:
-                self._is_querying = False
-                self._found_items.clear()
+            if not self._is_querying and len(self._found_items) == 0:
+                return self._tracked_items
+
+            result = self._found_items.copy()
+            self.reset_tracking()
+            return result
 
         def count(self) -> int:
             try:
                 if not self._is_querying and len(self._found_items) == 0:
-                    return len(self._tracked_items)
-        
-                return len(self._found_items.copy())
+                    result = len(self._tracked_items)
+                    return result
+
+                result = len(self._found_items.copy())
+                return result
             finally:
-                self._is_querying = False
-                self._found_items.clear()
+                self.reset_tracking()
 
         def update(self, field, value) -> list[T]:
             updated_items: list[T] = []
@@ -136,25 +135,29 @@ class JsonContext:
                 setattr(item, field, value)
                 self._tracked_items[index] = item
                 updated_items.append(item)
-            try:
-                return updated_items
-            finally:
-                self._is_querying = False
-                self._found_items.clear()
 
-        def delete(self) -> list[T]:
-            removed_items: list[T] = []
-            for item in self._found_items:
-                index = self._tracked_items.index(item)
-                removed = self._tracked_items.pop(index)
-                removed_items.append(removed)
+            self.reset_tracking()
+            return updated_items
+
+        def delete(self, item: T | None) -> list[T] | T:
             try:
+                if item is not None:
+                    index = self._tracked_items.index(item)
+                    removed = self._tracked_items.pop(index)
+                    return removed
+
+                removed_items: list[T] = []
+                for items in self._found_items:
+                    index = self._tracked_items.index(items)
+                    removed = self._tracked_items.pop(index)
+                    removed_items.append(removed)
+
                 return removed_items
             finally:
-                self._is_querying = False
-                self._found_items.clear()
+                self.reset_tracking()
 
         def save_changes(self):
+            self.reset_tracking()
             with open(self.file_path, "w", encoding="utf-8") as f:
                 data = [asdict(item) for item in self._tracked_items]
                 json.dump(data, f, indent=4)
