@@ -139,7 +139,7 @@ class JsonContext:
             self.reset_tracking()
             return updated_items
 
-        def delete(self, item: T | None) -> list[T] | T:
+        def delete(self, item: T | None = None) -> list[T] | T:
             try:
                 if item is not None:
                     index = self._tracked_items.index(item)
