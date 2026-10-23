@@ -16,10 +16,10 @@ class AppContext(JsonContext):
     def __init__(self) -> None:
         super().__init__()
 
-        # set your json path
+        # set or inject your json path
         users_json = "users.json"
 
-        # define a set and pass the model type and the json path to it
+        # define a JsonSet, passing the respective model type and json path to it
         self.users = self.JsonSet(model_class=User, json_path=users_json)
 
 # where query
@@ -52,13 +52,13 @@ deleted_users = context.users.where(lambda u: u.name == "John").delete()
 
 context.users.save_changes()
 ```
-Both methods returns the deleted object.
+Both methods returns the deleted objects.
 
 ## Filtering
 ### Where:
 The `.where()` method receives a `lambda` function to filter the loaded items list
 ```python
-# get all users named John
+# get first user named John
 user = context.users.where(lambda u: u.name == "John").first()
 
 # get all users of age 22
